@@ -49,3 +49,6 @@ backups/
 # Misc
 *.bak
 *.tmp
+
+# Next/TS build artefacts
+tsconfig.tsbuildinfo
