@@ -111,6 +111,12 @@ services:
   # ── one-shot helpers (use `--profile migrate` / `--profile seed`) ────────
 
   migrate:
+    # Shares the backend image. `build:` ensures the image exists even when
+    # this profile is invoked before `backend` is ever brought up (i.e. on
+    # first-time deploy).
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     image: nasiya-backend:latest
     container_name: nasiya-migrate
     profiles: ["migrate"]
@@ -123,6 +129,9 @@ services:
     command: ["alembic", "upgrade", "head"]
 
   seed:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     image: nasiya-backend:latest
     container_name: nasiya-seed
     profiles: ["seed"]
