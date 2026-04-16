@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Node
+node_modules/
+.next/
+.turbo/
+out/
+.pnpm-store/
+
+# Env (NEVER commit secrets)
+.env
+.env.local
+.env.*.local
+.env.production
+.env.dev_backup
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Docker
+docker-volumes/
+
+# Backups
+backups/
+
+# Claude / agent state (not for the public repo)
+.claude/
+
+# Misc
+*.bak
+*.tmp

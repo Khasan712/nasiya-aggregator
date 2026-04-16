@@ -1,0 +1,140 @@
+# Production stack — single .env file in the repo root drives everything.
+#
+# Usage:
+#   docker compose -f docker-compose.prod.yml --profile migrate run --rm migrate
+#   docker compose -f docker-compose.prod.yml --profile seed run --rm seed
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# Backend & dashboard are bound to 127.0.0.1 only — host nginx is the public
+# entry point. Postgres & Redis are not exposed at all.
+
+x-app-env: &app-env
+  TZ: Asia/Tashkent
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: nasiya-postgres
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      POSTGRES_USER: ${POSTGRES_USER:-nasiya}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_DB: ${POSTGRES_DB:-nasiya}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nasiya} -d ${POSTGRES_DB:-nasiya}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks: [nasiya_net]
+
+  redis:
+    image: redis:7-alpine
+    container_name: nasiya-redis
+    restart: unless-stopped
+    environment: *app-env
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks: [nasiya_net]
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: nasiya-backend:latest
+    container_name: nasiya-backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      <<: *app-env
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    ports:
+      - "127.0.0.1:8000:8000"   # Only host-local — nginx proxies the public side
+    networks: [nasiya_net]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/api/v1/health"]
+      interval: 15s
+      timeout: 4s
+      start_period: 10s
+      retries: 3
+
+  bot:
+    build:
+      context: ./bot
+      dockerfile: Dockerfile
+    image: nasiya-bot:latest
+    container_name: nasiya-bot
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      <<: *app-env
+      # Inside the docker network, the bot reaches the API by service name.
+      BACKEND_URL: http://backend:8000
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      backend: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [nasiya_net]
+
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    image: nasiya-dashboard:latest
+    container_name: nasiya-dashboard
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      <<: *app-env
+      # Server-side fetch path (Next server components → backend) stays inside the network.
+      # The browser-facing NEXT_PUBLIC_BACKEND_URL is whatever the user opens
+      # the dashboard at (e.g. http://YOUR_SERVER_IP) and is read from .env.
+      BACKEND_URL: http://backend:8000
+    depends_on:
+      backend: { condition: service_healthy }
+    ports:
+      - "127.0.0.1:3000:3000"
+    networks: [nasiya_net]
+
+  # ── one-shot helpers (use `--profile migrate` / `--profile seed`) ────────
+
+  migrate:
+    image: nasiya-backend:latest
+    container_name: nasiya-migrate
+    profiles: ["migrate"]
+    env_file: .env
+    environment:
+      <<: *app-env
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [nasiya_net]
+    command: ["alembic", "upgrade", "head"]
+
+  seed:
+    image: nasiya-backend:latest
+    container_name: nasiya-seed
+    profiles: ["seed"]
+    env_file: .env
+    environment:
+      <<: *app-env
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [nasiya_net]
+    command: ["sh", "-c", "alembic upgrade head && python -m app.scripts.seed_providers && python -m app.scripts.seed_admin"]
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  nasiya_net:
+    driver: bridge
