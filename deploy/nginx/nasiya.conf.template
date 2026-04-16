@@ -29,8 +29,11 @@ proxy_set_header Upgrade             $http_upgrade;
 proxy_set_header Connection          "upgrade";
 
 server {
-    listen 80;
-    listen [::]:80;
+    # `${NGINX_DEFAULT_SERVER}` bo'sh bo'lsa — faqat server_name bo'yicha match.
+    # Agar `default_server` qilinsa — host-header hech qaysi config'ga mos
+    # kelmasa, nginx bu config'ga yo'naltiradi (masalan IP bilan kelgan so'rov).
+    listen 80 ${NGINX_DEFAULT_SERVER};
+    listen [::]:80 ${NGINX_DEFAULT_SERVER};
     server_name ${NGINX_SERVER_NAME};
 
     client_max_body_size 4m;

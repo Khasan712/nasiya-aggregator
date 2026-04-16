@@ -28,6 +28,12 @@ export DASHBOARD_HOST_PORT="${DASHBOARD_HOST_PORT:-3000}"
 # server_name — IP yoki domain. Default: catch-all `_` (lekin mavjud nginx
 # config'da `_` allaqachon bo'lsa, .env'da real IP/domain yozish tavsiya etiladi).
 export NGINX_SERVER_NAME="${NGINX_SERVER_NAME:-_}"
+# `NGINX_DEFAULT_SERVER=default_server` bo'lsa — nasiya host-header mos kelmagan
+# so'rovlar uchun ham javob beradi (IP bilan kirish uchun kerak). Bo'sh bo'lsa
+# faqat server_name matchga javob beradi.
+# Server'da boshqa default_server (masalan sites-enabled/default) yo'qligiga
+# ishonch hosil qilib qo'ying: `grep -r "default_server" /etc/nginx/`
+export NGINX_DEFAULT_SERVER="${NGINX_DEFAULT_SERVER:-}"
 
 # Render to a temp file first so we can compare and avoid an unnecessary reload.
 TMP="$(mktemp)"
@@ -36,19 +42,25 @@ trap 'rm -f "$TMP"' EXIT
 # Substitute exactly the variables we care about. Prefer envsubst (gettext) on
 # Linux servers; fall back to plain sed when it's missing (macOS dev boxes).
 if command -v envsubst >/dev/null 2>&1; then
-  envsubst '${BACKEND_HOST_PORT} ${DASHBOARD_HOST_PORT} ${NGINX_SERVER_NAME}' < "$TEMPLATE" > "$TMP"
+  envsubst '${BACKEND_HOST_PORT} ${DASHBOARD_HOST_PORT} ${NGINX_SERVER_NAME} ${NGINX_DEFAULT_SERVER}' < "$TEMPLATE" > "$TMP"
 else
   /usr/bin/sed \
     -e "s|\${BACKEND_HOST_PORT}|$BACKEND_HOST_PORT|g" \
     -e "s|\${DASHBOARD_HOST_PORT}|$DASHBOARD_HOST_PORT|g" \
     -e "s|\${NGINX_SERVER_NAME}|$NGINX_SERVER_NAME|g" \
+    -e "s|\${NGINX_DEFAULT_SERVER}|$NGINX_DEFAULT_SERVER|g" \
     "$TEMPLATE" > "$TMP"
 fi
 
+# Tidy up: if NGINX_DEFAULT_SERVER is empty, remove the trailing space before ;
+/usr/bin/sed -i.bak -E 's/(listen [^;]*[^ ;]) +;/\1;/g; s/(listen [^;]*) +;/\1;/g' "$TMP"
+/bin/rm -f "${TMP}.bak"
+
 echo "→ Rendered template:"
-echo "    BACKEND_HOST_PORT   = $BACKEND_HOST_PORT"
-echo "    DASHBOARD_HOST_PORT = $DASHBOARD_HOST_PORT"
-echo "    NGINX_SERVER_NAME   = $NGINX_SERVER_NAME"
+echo "    BACKEND_HOST_PORT    = $BACKEND_HOST_PORT"
+echo "    DASHBOARD_HOST_PORT  = $DASHBOARD_HOST_PORT"
+echo "    NGINX_SERVER_NAME    = $NGINX_SERVER_NAME"
+echo "    NGINX_DEFAULT_SERVER = ${NGINX_DEFAULT_SERVER:-(not default)}"
 echo "    destination = $DEST"
 
 # Detect if the destination needs writing (idempotent).
