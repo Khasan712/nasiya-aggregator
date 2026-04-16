@@ -58,7 +58,9 @@ services:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
     ports:
-      - "127.0.0.1:8000:8000"   # Only host-local — nginx proxies the public side
+      # Host port is configurable via .env (BACKEND_HOST_PORT) — change it if
+      # 8000 is taken by another project on this server. Container side stays 8000.
+      - "127.0.0.1:${BACKEND_HOST_PORT:-8000}:8000"
     networks: [nasiya_net]
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8000/api/v1/health"]
@@ -102,7 +104,8 @@ services:
     depends_on:
       backend: { condition: service_healthy }
     ports:
-      - "127.0.0.1:3000:3000"
+      # Host port is configurable via .env (DASHBOARD_HOST_PORT).
+      - "127.0.0.1:${DASHBOARD_HOST_PORT:-3000}:3000"
     networks: [nasiya_net]
 
   # ── one-shot helpers (use `--profile migrate` / `--profile seed`) ────────

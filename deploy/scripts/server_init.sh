@@ -61,8 +61,11 @@ if [[ ! -f "$APP_DIR/.env" ]]; then
 fi
 
 # ─── 6. Nginx config ─────────────────────────────────────────────────────
-echo "▶ Nginx config /etc/nginx/conf.d/nasiya.conf ga ko'chirilmoqda"
-cp "$APP_DIR/deploy/nginx/nasiya.conf" /etc/nginx/conf.d/nasiya.conf
+echo "▶ Nginx config'ni template'dan render qilib /etc/nginx/conf.d/nasiya.conf ga yozish"
+# .env mavjudligi tekshirilgan (5-qadam). Render skripti envdan port qiymatlarni oladi.
+sudo -u "$DEPLOYER" bash -lc "cd $APP_DIR && ./deploy/scripts/render_nginx.sh /tmp/nasiya.conf.rendered"
+cp /tmp/nasiya.conf.rendered /etc/nginx/conf.d/nasiya.conf
+rm -f /tmp/nasiya.conf.rendered
 # Default conf'ni o'chirish (default_server collision oldini olish uchun)
 if [[ -f /etc/nginx/sites-enabled/default ]]; then
   rm /etc/nginx/sites-enabled/default

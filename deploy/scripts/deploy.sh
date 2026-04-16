@@ -50,6 +50,13 @@ echo
 echo "▶ docker compose up -d"
 docker compose -f "$COMPOSE_FILE" up -d --remove-orphans postgres redis backend bot dashboard
 
+# ─── 4b. Re-render nginx config (in case ports in .env changed) ─────────
+if [[ -x "deploy/scripts/render_nginx.sh" ]]; then
+  echo
+  echo "▶ Refreshing nginx config from template"
+  ./deploy/scripts/render_nginx.sh || echo "  (nginx render skipped — not running on the deploy host)"
+fi
+
 # ─── 5. Health summary ───────────────────────────────────────────────────
 echo
 echo "▶ Status:"

@@ -165,7 +165,31 @@ docker compose -f docker-compose.prod.yml run --rm backend alembic downgrade -1
 
 ---
 
-## 5. Domain qo'shish (keyinchalik)
+## 5. Portlarni o'zgartirish (server'da boshqa loyihalar bilan to'qnashganda)
+
+Default'da loyiha host'da `127.0.0.1:8000` (backend) va `127.0.0.1:3000` (dashboard) portlarini ishlatadi. Agar serverdagi boshqa loyihalar shu portlarni band qilgan bo'lsa, `.env` faylda yangi portlar yozing:
+
+```bash
+nano /opt/nasiya/.env
+# qo'ying yoki o'zgartiring:
+BACKEND_HOST_PORT=18000
+DASHBOARD_HOST_PORT=13000
+```
+
+So'ng deploy:
+
+```bash
+cd /opt/nasiya
+./deploy/scripts/deploy.sh   # build + restart + nginx config'ni avtomat render qiladi
+```
+
+`deploy.sh` `render_nginx.sh`'ni chaqiradi — u `.env`'dagi yangi portlarni o'qib, `/etc/nginx/conf.d/nasiya.conf`'ni qayta yozadi va nginx'ni reload qiladi. Faqat config haqiqatan o'zgargan bo'lsa reload bo'ladi (idempotent).
+
+**Container ichidagi portlar** (Postgres 5432, Redis 6379, backend 8000, dashboard 3000) doim default qoladi — Docker tarmog'i ichida ular standart raqamlar bilan ishlaydi.
+
+---
+
+## 6. Domain qo'shish (keyinchalik)
 
 Domain DNS A-record'ni server IP'ga yo'naltirgandan so'ng:
 
@@ -186,7 +210,7 @@ docker compose -f docker-compose.prod.yml restart backend dashboard
 
 ---
 
-## 6. Xavfsizlik
+## 7. Xavfsizlik
 
 - ✅ Postgres va Redis docker tarmog'idan tashqariga ko'rinmaydi
 - ✅ Backend va dashboard portlari faqat `127.0.0.1` ga bog'langan (nginx orqali)
@@ -204,7 +228,7 @@ docker compose -f docker-compose.prod.yml restart backend dashboard
 
 ---
 
-## 7. Tez-tez beriladigan savollar
+## 8. Tez-tez beriladigan savollar
 
 **Q: Bot ishlamayapti, nima qilish kerak?**
 A: `BOT_TOKEN` to'g'rimi tekshiring (`docker logs nasiya-bot`). Token yo'q yoki noto'g'ri bo'lsa, `nano .env` ichida tuzating va `docker compose -f docker-compose.prod.yml restart bot`.
