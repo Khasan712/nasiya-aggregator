@@ -66,10 +66,9 @@ echo "▶ Nginx config'ni template'dan render qilib /etc/nginx/conf.d/nasiya.con
 sudo -u "$DEPLOYER" bash -lc "cd $APP_DIR && ./deploy/scripts/render_nginx.sh /tmp/nasiya.conf.rendered"
 cp /tmp/nasiya.conf.rendered /etc/nginx/conf.d/nasiya.conf
 rm -f /tmp/nasiya.conf.rendered
-# Default conf'ni o'chirish (default_server collision oldini olish uchun)
-if [[ -f /etc/nginx/sites-enabled/default ]]; then
-  rm /etc/nginx/sites-enabled/default
-fi
+# Bizning config `default_server` ishlatmaydi — `server_name` (NGINX_SERVER_NAME
+# .env'da) bo'yicha so'rovlarni qabul qiladi. Mavjud /sites-enabled/default
+# yoki boshqa loyiha config'lariga TEGINMAYMIZ.
 nginx -t
 systemctl reload nginx
 
