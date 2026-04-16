@@ -48,6 +48,11 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      # `network: host` — build paytida host tarmoq sozlamasini ishlatadi.
+      # Ba'zi serverlarda Docker default bridge NAT orqali tashqi DNS/HTTP
+      # ishlamaydi (uzcorpora ham shu pattern'ni ishlatgan). Host network
+      # apt-get va PyPI/npm download'larni host bilan bir xil sharoitda qiladi.
+      network: host
     image: nasiya-backend:latest
     container_name: nasiya-backend
     restart: unless-stopped
@@ -73,6 +78,7 @@ services:
     build:
       context: ./bot
       dockerfile: Dockerfile
+      network: host
     image: nasiya-bot:latest
     container_name: nasiya-bot
     restart: unless-stopped
@@ -91,6 +97,7 @@ services:
     build:
       context: ./dashboard
       dockerfile: Dockerfile
+      network: host
     image: nasiya-dashboard:latest
     container_name: nasiya-dashboard
     restart: unless-stopped
@@ -117,6 +124,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      network: host
     image: nasiya-backend:latest
     container_name: nasiya-migrate
     profiles: ["migrate"]
@@ -132,6 +140,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      network: host
     image: nasiya-backend:latest
     container_name: nasiya-seed
     profiles: ["seed"]
