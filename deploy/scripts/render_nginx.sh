@@ -20,11 +20,14 @@ if [[ ! -f .env ]]; then
   exit 1
 fi
 
-# Load only the port vars we care about, with defaults that match compose files.
+# Load only the vars we care about, with defaults that match compose files.
 # shellcheck source=/dev/null
 set -a; . ./.env; set +a
 export BACKEND_HOST_PORT="${BACKEND_HOST_PORT:-8000}"
 export DASHBOARD_HOST_PORT="${DASHBOARD_HOST_PORT:-3000}"
+# server_name — IP yoki domain. Default: catch-all `_` (lekin mavjud nginx
+# config'da `_` allaqachon bo'lsa, .env'da real IP/domain yozish tavsiya etiladi).
+export NGINX_SERVER_NAME="${NGINX_SERVER_NAME:-_}"
 
 # Render to a temp file first so we can compare and avoid an unnecessary reload.
 TMP="$(mktemp)"
@@ -33,17 +36,19 @@ trap 'rm -f "$TMP"' EXIT
 # Substitute exactly the variables we care about. Prefer envsubst (gettext) on
 # Linux servers; fall back to plain sed when it's missing (macOS dev boxes).
 if command -v envsubst >/dev/null 2>&1; then
-  envsubst '${BACKEND_HOST_PORT} ${DASHBOARD_HOST_PORT}' < "$TEMPLATE" > "$TMP"
+  envsubst '${BACKEND_HOST_PORT} ${DASHBOARD_HOST_PORT} ${NGINX_SERVER_NAME}' < "$TEMPLATE" > "$TMP"
 else
   /usr/bin/sed \
-    -e "s/\${BACKEND_HOST_PORT}/$BACKEND_HOST_PORT/g" \
-    -e "s/\${DASHBOARD_HOST_PORT}/$DASHBOARD_HOST_PORT/g" \
+    -e "s|\${BACKEND_HOST_PORT}|$BACKEND_HOST_PORT|g" \
+    -e "s|\${DASHBOARD_HOST_PORT}|$DASHBOARD_HOST_PORT|g" \
+    -e "s|\${NGINX_SERVER_NAME}|$NGINX_SERVER_NAME|g" \
     "$TEMPLATE" > "$TMP"
 fi
 
 echo "→ Rendered template:"
-echo "    BACKEND_HOST_PORT  = $BACKEND_HOST_PORT"
+echo "    BACKEND_HOST_PORT   = $BACKEND_HOST_PORT"
 echo "    DASHBOARD_HOST_PORT = $DASHBOARD_HOST_PORT"
+echo "    NGINX_SERVER_NAME   = $NGINX_SERVER_NAME"
 echo "    destination = $DEST"
 
 # Detect if the destination needs writing (idempotent).
